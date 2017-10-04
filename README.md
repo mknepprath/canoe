@@ -1,2 +1,1 @@
-# canoe
-Twitter bot for boat tipping.
+BOUT_BOT
