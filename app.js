@@ -1,5 +1,5 @@
 const TwitterPackage = require('twitter')
-const bout_bot_id = '3016652708'
+const botId = '915942223698710529'
 const {
   CONSUMER_KEY: consumer_key,
   CONSUMER_SECRET: consumer_secret,
@@ -21,15 +21,13 @@ const tweet = (status, in_reply_to_status_id) => {
     console.log(error || 'Replied: ' + reply.text)
   })
 }
-
 // Return a random item from array
 const random = (n) => {
   return n[Math.floor(Math.random() * n.length)]
 }
 
-const handleMentions = (mentions) => {
-  console.log('LOOP THRU MENTIONS')
-  console.log('==================')
+const handleMentions = (mentions, tweets) => {
+  console.log('=== LOOP THRU MENTIONS ===')
 
   for (let i in mentions) {
     // Get user_id, created_id for current mention
@@ -37,50 +35,60 @@ const handleMentions = (mentions) => {
     const {
       text,
       created_at,
+      id_str,
+      user,
       user: {
         id_str: current_id,
-        screen_name
+        screen_name,
+        name
       },
       entities: {
         user_mentions
       }
     } = mentions[i]
+    
+    // Check if replied already
+    const replyTweet = tweets.find(t => t.in_reply_to_status_id_str === id_str)
 
     // Calculate age of tweet in days
     const created_date = new Date(created_at)
     const date = new Date()
     const age = Math.floor(((date - created_date) / 86400000))
     // If tweet is over 1 week old, stop queueing
-    if (age > 7) break
+    if (age > 7 || !!replyTweet || user_mentions.length < 2) break
 
-    console.log('Mention #' + i, '@' + screen_name + ' tweeted "' + text + '" (' + age + ' days ago)')
-
+    console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + text + '" (' + age + ' days ago)')
+    
     // Get all users mentioned (except @bout_bot)
-    let _users = [current_id]
-    if (user_mentions.length > 1) {
-      for (let m in user_mentions) {
-        const { id_str } = user_mentions[m]
-        if (id_str !== bout_bot_id) {
-          _users.push(id_str)
-        }
+    let mentioned = []
+    for (let m in user_mentions) {
+      const { id_str } = user_mentions[m]
+      if (id_str !== botId) {
+        mentioned.push(user_mentions[m])
       }
-      console.log('---')
     }
+    
+    // Get a winner
+    const _pool = [...mentioned]
+    _pool.push(user)
+    const winner = random(_pool)
+    
+    // Mentioner's screen_name goes first, then everyone else's, then winner's name
+    tweet('@' + user.screen_name + ' @' + mentioned.map((m) => m.screen_name).join(' @') + ' Everyone fell out of the canoe... except ' + winner.name + '!', id_str)
   }
   console.log('')
-
-  setTimeout(function () {
-    client.end(function (err) {
-      if (err) throw err
-    })
-  }, 300)
 }
-
-// Get mentions of @bout_bot
+// Get @tip_canoe tweets (pass all mentions in here to check if they've been replied to?)
+const getTimeline = (mentions) => {
+  twitter.get('statuses/user_timeline', function (error, tweets, response) {
+    if (!error) handleMentions(mentions, tweets)
+  })
+}
+// Get mentions of @tip_canoe
 const getMentions = () => {
   twitter.get('statuses/mentions_timeline', function (error, mentions, response) {
     if (!error) {
-      handleMentions(mentions)
+      getTimeline(mentions)
     } else {
       // Getting mentions from Twitter failed
       console.log(error)
@@ -88,4 +96,4 @@ const getMentions = () => {
   })
 }
 
-// getMentions()
+getMentions()
