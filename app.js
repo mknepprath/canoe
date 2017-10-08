@@ -17,7 +17,7 @@ const twitter = new TwitterPackage({
 
 // Post tweets
 const tweet = (status, in_reply_to_status_id) => {
-  twitter.post('statuses/update', { status, in_reply_to_status_id }, function (error, reply, response) {
+  twitter.post('statuses/update', { status, in_reply_to_status_id, auto_populate_reply_metadata: true }, function (error, reply, response) {
     console.log(error || 'Replied: ' + reply.text)
   })
 }
@@ -33,7 +33,7 @@ const handleMentions = (mentions, tweets) => {
     // Get user_id, created_id for current mention
     // TODO: delete text, screen_name
     const {
-      text,
+      full_text,
       created_at,
       id_str,
       user,
@@ -57,7 +57,7 @@ const handleMentions = (mentions, tweets) => {
     // If tweet is over 1 week old, stop queueing
     if (age > 7 || !!replyTweet || user_mentions.length < 2) break
 
-    console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + text + '" (' + age + ' days ago)')
+    console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + full_text + '" (' + age + ' days ago)')
     
     // Get all users mentioned (except @bout_bot)
     let mentioned = []
@@ -74,19 +74,19 @@ const handleMentions = (mentions, tweets) => {
     const winner = random(_pool)
     
     // Mentioner's screen_name goes first, then everyone else's, then winner's name
-    tweet('@' + user.screen_name + ' @' + mentioned.map((m) => m.screen_name).join(' @') + ' Everyone fell out of the canoe... except ' + winner.name + '!', id_str)
+    tweet('Everyone fell out of the canoe... except ' + winner.name + '!', id_str)
   }
   console.log('')
 }
 // Get @tip_canoe tweets (pass all mentions in here to check if they've been replied to?)
 const getTimeline = (mentions) => {
-  twitter.get('statuses/user_timeline', function (error, tweets, response) {
+  twitter.get('statuses/user_timeline', { tweet_mode: 'extended' }, function (error, tweets, response) {
     if (!error) handleMentions(mentions, tweets)
   })
 }
 // Get mentions of @tip_canoe
 const getMentions = () => {
-  twitter.get('statuses/mentions_timeline', function (error, mentions, response) {
+  twitter.get('statuses/mentions_timeline', { tweet_mode: 'extended' }, function (error, mentions, response) {
     if (!error) {
       getTimeline(mentions)
     } else {
