@@ -4,13 +4,16 @@
   "main": "app.js",
   "author": "Michael Knepprath",
   "license": "MIT",
+  "repository": {
+  "type": "git",
+  "url": "git://github.com/mknepprath/canoe.git"
+  },
   "scripts": {
     "start": "node app",
     "watch": "node clock"
   },
   "dependencies": {
     "node-cron": "^1.2.1",
-    "pg": "^6.1.5",
     "twitter": "^1.7.1"
   }
 }
