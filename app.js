@@ -1,24 +1,17 @@
-const TwitterPackage = require('twitter')
+const TwitterPkg = require('twitter')
 const botId = '915942223698710529'
-const {
-  CONSUMER_KEY: consumer_key,
-  CONSUMER_SECRET: consumer_secret,
-  ACCESS_TOKEN_KEY: access_token_key,
-  ACCESS_TOKEN_SECRET: access_token_secret
-} = process.env
-
-// Initialize Twitter
-const twitter = new TwitterPackage({
-  consumer_key,
-  consumer_secret,
-  access_token_key,
-  access_token_secret
+const twitter = new TwitterPkg({
+  consumer_key: process.env.CONSUMER_KEY,
+  consumer_secret: process.env.CONSUMER_SECRET,
+  access_token_key: process.env.ACCESS_TOKEN_KEY,
+  access_token_secret: process.env.ACCESS_TOKEN_SECRET
 })
 
 // Post tweets
 const tweet = (status, in_reply_to_status_id) => {
+  console.log(status)
   twitter.post('statuses/update', { status, in_reply_to_status_id, auto_populate_reply_metadata: true }, function (error, reply, response) {
-    console.log(error || 'Replied: ' + reply.text)
+    if (!error) console.log('Replied!')
   })
 }
 // Return a random item from array
@@ -28,53 +21,48 @@ const random = (n) => {
 
 const handleMentions = (mentions, tweets) => {
   console.log('=== LOOP THRU MENTIONS ===')
-
+  
   for (let i in mentions) {
-    // Get user_id, created_id for current mention
-    // TODO: delete text, screen_name
     const {
       full_text,
       created_at,
       id_str,
+      in_reply_to_user_id_str,
+      in_reply_to_status_id_str,
       user,
-      user: {
-        id_str: current_id,
-        screen_name,
-        name
-      },
       entities: {
         user_mentions
       }
     } = mentions[i]
     
-    // Check if replied already
+    // Check if replied already (one of bot's tweets was in reply to this tweet)
     const replyTweet = tweets.find(t => t.in_reply_to_status_id_str === id_str)
+    
+    // Check if in reply to this bot...
+    const replyToBot = in_reply_to_user_id_str === botId
+    
+    // Check if bot was already used in this canoe (replying to a tweet that was already in bot's mentions)
+    const replyToPreviousMention = mentions.find(m => m.id_str === in_reply_to_status_id_str)
 
     // Calculate age of tweet in days
     const created_date = new Date(created_at)
     const date = new Date()
     const age = Math.floor(((date - created_date) / 86400000))
     // If tweet is over 1 week old, stop queueing
-    if (age > 7 || !!replyTweet || user_mentions.length < 2) break
+    if (age <= 7 && user_mentions.length > 1 && !replyTweet && !replyToBot && !replyToPreviousMention) {
+      console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + full_text + '" (' + age + ' days ago)')
 
-    console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + full_text + '" (' + age + ' days ago)')
-    
-    // Get all users mentioned (except @bout_bot)
-    let mentioned = []
-    for (let m in user_mentions) {
-      const { id_str } = user_mentions[m]
-      if (id_str !== botId) {
-        mentioned.push(user_mentions[m])
-      }
+      // Get all users mentioned (except @bout_bot)
+      let users = [...user_mentions]
+      const removeBot = users.findIndex(u => u.id_str === botId)
+      users.splice(removeBot, 1)
+      users.push(user)
+      
+      const winner = random(users)
+
+      // Mentioner's screen_name goes first, then everyone else's, then winner's name
+      tweet('Everyone fell out of the canoe... except ' + winner.name + '!', id_str)
     }
-    
-    // Get a winner
-    const _pool = [...mentioned]
-    _pool.push(user)
-    const winner = random(_pool)
-    
-    // Mentioner's screen_name goes first, then everyone else's, then winner's name
-    tweet('Everyone fell out of the canoe... except ' + winner.name + '!', id_str)
   }
   console.log('')
 }
@@ -87,12 +75,7 @@ const getTimeline = (mentions) => {
 // Get mentions of @tip_canoe
 const getMentions = () => {
   twitter.get('statuses/mentions_timeline', { tweet_mode: 'extended' }, function (error, mentions, response) {
-    if (!error) {
-      getTimeline(mentions)
-    } else {
-      // Getting mentions from Twitter failed
-      console.log(error)
-    }
+    if (!error) getTimeline(mentions)
   })
 }
 
