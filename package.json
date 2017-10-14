@@ -5,14 +5,15 @@
   "author": "Michael Knepprath",
   "license": "MIT",
   "repository": {
-  "type": "git",
-  "url": "git://github.com/mknepprath/canoe.git"
+    "type": "git",
+    "url": "git://github.com/mknepprath/canoe.git"
   },
   "scripts": {
     "start": "node app"
   },
   "dependencies": {
     "node-cron": "^1.2.1",
-    "twitter": "^1.7.1"
+    "twitter": "^1.7.1",
+    "express": "^4.16.2"
   }
 }
