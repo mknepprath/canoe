@@ -1,5 +1,7 @@
 const TwitterPkg = require('twitter')
-const botId = '915942223698710529'
+const http = require('http')
+const express = require('express')
+const botId = process.env.BOT_ID
 const twitter = new TwitterPkg({
   consumer_key: process.env.CONSUMER_KEY,
   consumer_secret: process.env.CONSUMER_SECRET,
@@ -11,10 +13,13 @@ const twitter = new TwitterPkg({
 const tweet = (status, in_reply_to_status_id) => {
   console.log(status)
   twitter.post('statuses/update', { status, in_reply_to_status_id, auto_populate_reply_metadata: true }, function (error, reply, response) {
-    if (!error) console.log('Replied!')
+    if (!error) {
+      console.log('Replied!')
+      console.log('')
+    }
   })
 }
-// Return a random item from array
+// Return a random element from array
 const random = (n) => {
   return n[Math.floor(Math.random() * n.length)]
 }
@@ -43,13 +48,16 @@ const handleMentions = (mentions, tweets) => {
     
     // Check if bot was already used in this canoe (replying to a tweet that was already in bot's mentions)
     const replyToPreviousMention = mentions.find(m => m.id_str === in_reply_to_status_id_str)
+    
+    // console.log(full_text)
+    // console.log(!!replyTweet, !!replyToBot, !!replyToPreviousMention)
 
-    // Calculate age of tweet in days
+    // Calculate age of tweet
     const created_date = new Date(created_at)
     const date = new Date()
-    const age = Math.floor(((date - created_date) / 86400000))
-    // If tweet is over 1 week old, stop queueing
-    if (age <= 7 && user_mentions.length > 1 && !replyTweet && !replyToBot && !replyToPreviousMention) {
+    const age = (date - created_date) / 86400000
+    // If tweet is over ~1 hour old, stop queueing
+    if (age <= 0.042 && user_mentions.length > 1 && !replyTweet && !replyToBot && !replyToPreviousMention) {
       console.log('Mention #' + i, '@' + user.screen_name + ' tweeted "' + full_text + '" (' + age + ' days ago)')
 
       // Get all users mentioned (except @bout_bot)
@@ -79,4 +87,14 @@ const getMentions = () => {
   })
 }
 
-getMentions()
+const app = express()
+app.get("/", (request, response) => {
+  console.log(Date.now() + " Ping Received")
+  getMentions()
+  response.sendStatus(200)
+})
+app.listen(process.env.PORT)
+
+setInterval(() => {
+  http.get(`http://${process.env.PROJECT_DOMAIN}.glitch.me/`)
+}, 30000)
